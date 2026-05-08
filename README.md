@@ -1,3 +1,4 @@
+<img width="1239" height="831" alt="Screenshot from 2026-05-08 17-38-26" src="https://github.com/user-attachments/assets/cffe4923-b7aa-4db0-83ac-e36f34b3d880" />
 
 # OWASP Security Lab
 
@@ -111,4 +112,3 @@ The SIEM engine fires alerts (printed to console + broadcast via WebSocket) when
 Extend `siemEngine.js` to add email, Slack, or PagerDuty webhooks.
 
 
-<img width="1239" height="831" alt="Screenshot from 2026-05-08 17-38-26" src="https://github.com/user-attachments/assets/cffe4923-b7aa-4db0-83ac-e36f34b3d880" />
