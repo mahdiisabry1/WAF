@@ -1,3 +1,4 @@
+
 # OWASP Security Lab
 
 A full-stack security lab for exploring and testing all 10 OWASP Top 10 vulnerability categories. Includes a live WAF, attack simulator, SIEM engine, and real-time dashboard.
@@ -108,3 +109,6 @@ The SIEM engine fires alerts (printed to console + broadcast via WebSocket) when
 2. An IP sends **5+ blocked requests within 60 seconds** (scan/brute-force pattern).
 
 Extend `siemEngine.js` to add email, Slack, or PagerDuty webhooks.
+
+
+<img width="1239" height="831" alt="Screenshot from 2026-05-08 17-38-26" src="https://github.com/user-attachments/assets/cffe4923-b7aa-4db0-83ac-e36f34b3d880" />
