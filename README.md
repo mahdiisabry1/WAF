@@ -4,8 +4,7 @@
 
 A full-stack security lab for exploring and testing all 10 OWASP Top 10 vulnerability categories. Includes a live WAF, attack simulator, SIEM engine, and real-time dashboard.
 
-> ⚠️ For **educational / lab use only**. Never expose the test routes in a production environment.
-
+> ⚠️ 
 ---
 
 ## Stack
