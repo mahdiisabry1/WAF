@@ -1,0 +1,13 @@
+.git
+.github
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/*.log
+attacks.log
+docs
+deploy
+README.md
+*.md
+!backend/.env.example

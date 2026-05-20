@@ -19,6 +19,18 @@ A full-stack security lab for exploring and testing all 10 OWASP Top 10 vulnerab
 
 ---
 
+## Docker & AWS deploy
+
+| Artifact | Purpose |
+|----------|---------|
+| `Dockerfile` | Production image (API + frontend) |
+| `docker-compose.yml` | Local run: `docker compose up --build` |
+| `.github/workflows/ci.yml` | Build image + smoke test on PR/push |
+| `.github/workflows/deploy-aws.yml` | Push to ECR + deploy ECS on `main` |
+| `deploy/aws-setup.md` | Step-by-step AWS (ECR, ECS, ALB, GitHub vars) |
+
+---
+
 ## Quick start
 
 ### 1. Prerequisites

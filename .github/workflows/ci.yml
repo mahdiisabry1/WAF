@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, OWASPSL, BasicWAF]
+  pull_request:
+    branches: [main, OWASPSL, BasicWAF]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t waf-lab:${{ github.sha }} .
+
+      - name: Smoke test container
+        run: |
+          docker run -d --name waf-smoke -p 3000:3000 waf-lab:${{ github.sha }}
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health; then
+              echo "Health check passed"
+              docker rm -f waf-smoke
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs waf-smoke
+          docker rm -f waf-smoke
+          exit 1
