@@ -1,125 +1,114 @@
 <img width="1239" height="831" alt="Screenshot from 2026-05-08 17-38-26" src="https://github.com/user-attachments/assets/cffe4923-b7aa-4db0-83ac-e36f34b3d880" />
 
-# OWASP Security Lab
+# WAF MVP
 
-A full-stack security lab for exploring and testing all 10 OWASP Top 10 vulnerability categories. Includes a live WAF, attack simulator, SIEM engine, and real-time dashboard.
+A small, self-contained Web Application Firewall (WAF) demonstration built with Node.js, Express, and vanilla browser JavaScript.
 
-> ⚠️ 
----
+It is intended for learning and local testing: send benign or attack-like requests through the included simulator, see which rule matched, and watch the event appear live in the dashboard. It is **not** a production-ready WAF.
 
-## Stack
+## What it does
 
-| Layer     | Tech                          |
-|-----------|-------------------------------|
-| Backend   | Node.js + Express (ESM)       |
-| WAF       | Custom regex rule engine      |
-| Database  | MongoDB + Mongoose            |
-| SIEM      | In-process event engine + WebSocket |
-| Frontend  | Vanilla HTML/JS + Chart.js    |
+Every request passes through WAF middleware before reaching the API routes. The middleware inspects the request method, URL, query parameters, and JSON/form body against a small set of regular-expression rules.
 
----
+When it finds a match, it:
 
-## Docker & AWS deploy
+- classifies the event with an OWASP label and severity;
+- records a log entry in an in-memory log store;
+- broadcasts the event and refreshed statistics to connected dashboard clients over WebSocket; and
+- blocks the request with HTTP `403` by default.
 
-| Artifact | Purpose |
-|----------|---------|
-| `Dockerfile` | Production image (API + frontend) |
-| `docker-compose.yml` | Local run: `docker compose up --build` |
-| `.github/workflows/ci.yml` | Build image + smoke test on PR/push |
-| `.github/workflows/deploy-aws.yml` | Push to ECR + deploy ECS on `main` |
-| `deploy/aws-setup.md` | Step-by-step AWS (ECR, ECS, ALB, GitHub vars) |
+With monitor mode enabled, matching requests are logged but still allowed to reach the endpoint.
 
----
+## Included detection rules
 
-## Quick start
+The current MVP has four detection rules:
 
-### 1. Prerequisites
+| Rule | OWASP label | Detects | Severity |
+| --- | --- | --- |
+| `A03-SQLI-1` | A03: Injection | Basic SQL keywords/tokens such as `UNION`, `SELECT`, `OR 1=1`, and `--` | Critical |
+| `A03-XSS-1` | A03: Injection | Basic XSS fragments such as `<script>`, `javascript:`, and event handlers | High |
+| `A07-TRAVERSAL-1` | A07: Identification and Authentication Failures | Path traversal sequences such as `../` and encoded variants | High |
+| `A10-SSRF-1` | A10: Server-Side Request Forgery | Localhost and cloud metadata targets | High |
 
-- Node.js ≥ 18
-- MongoDB running locally (or a MongoDB Atlas URI)
+These are deliberately simple regex examples. They can produce false positives and are not sufficient protection for a real application.
 
-### 2. Backend
+## Interface
+
+- **Dashboard** (`/dashboard.html`) — live totals and the most recent WAF events.
+- **Attack simulator** (`/simulator.html`) — sends preset SQL injection, XSS, traversal, SSRF, or benign payloads to the example endpoints.
+- **WebSocket** (`/ws`) — pushes newly detected events and summary statistics to the dashboard.
+
+## API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Service status, current WAF mode, and time |
+| `GET` | `/api/stats` | In-memory log statistics |
+| `GET` | `/api/logs` | Paginated and filterable log entries |
+| `GET` | `/api/logs/:id` | One log entry |
+| `DELETE` | `/api/logs` | Clear all in-memory logs |
+| `GET` | `/api/test/a03/search?q=...` | Example search endpoint |
+| `GET` | `/api/test/a07/file?name=...` | Example file-name endpoint |
+| `GET` | `/api/test/a10/fetch?url=...` | Example URL endpoint |
+
+`GET /api/logs` supports `page`, `limit`, `severity`, `blocked`, `ip`, `from`, and `to` query parameters. The log store keeps at most 2,000 entries and is reset whenever the server restarts.
+
+## Run locally
+
+Requirements: Node.js 18 or later.
 
 ```bash
 cd backend
 npm install
-cp .env .env.local        # edit MONGO_URI if needed
-npm run dev               # starts with --watch
+npm run dev
 ```
 
-### 3. Frontend
+Then visit <http://localhost:3000>. The server hosts both the dashboard and simulator.
 
-Open `frontend/dashboard.html` and `frontend/simulator.html` directly in a browser,
-or serve them with any static file server:
+To run the production container locally:
 
 ```bash
-npx serve frontend
+docker compose up --build
 ```
-
----
-
-## Project structure
-
-```
-owasp-security-lab/
-├── backend/src/
-│   ├── app.js               # Express entry point + WebSocket
-│   ├── db.js                # MongoDB connection
-│   ├── middleware/waf.js    # WAF middleware
-│   ├── owasp/
-│   │   ├── rules.js         # All 24 detection rules (A01–A10)
-│   │   └── classifier.js    # Rule matching + severity ranking
-│   ├── models/Log.js        # Mongoose log schema (30-day TTL)
-│   ├── routes/
-│   │   ├── logs.js          # GET /api/logs  (paginated, filterable)
-│   │   ├── stats.js         # GET /api/stats (aggregated)
-│   │   └── testRoutes.js    # Vulnerable endpoints for each OWASP category
-│   └── services/siemEngine.js  # Pattern alerting + WebSocket broadcast
-├── frontend/
-│   ├── dashboard.html       # Live stats + log table
-│   ├── simulator.html       # Interactive attack simulator
-│   ├── dashboard.js         # Chart.js rendering + WS client
-│   └── styles.css
-└── docs/owasp-mapping.md    # Rule-to-category reference
-```
-
----
-
-## API reference
-
-| Method | Endpoint              | Description                        |
-|--------|-----------------------|------------------------------------|
-| GET    | `/health`             | Server status + block mode         |
-| GET    | `/api/stats`          | Aggregated stats for dashboard     |
-| GET    | `/api/logs`           | Paginated log list (see params)    |
-| GET    | `/api/logs/:id`       | Single log entry                   |
-| DELETE | `/api/logs`           | Flush all logs                     |
-| GET    | `/api/test/a01/admin` | A01 — admin access test            |
-| GET    | `/api/test/a03/search`| A03 — SQL injection reflection     |
-| ...    | `/api/test/aNN/...`   | One route per OWASP category       |
-
-### Log query params
-
-`GET /api/logs?page=1&limit=50&severity=critical&blocked=true&ip=127.0.0.1&from=2024-01-01&to=2024-12-31`
-
----
 
 ## WAF modes
 
-| Mode          | Env var                   | Behaviour                      |
-|---------------|---------------------------|--------------------------------|
-| Block (default) | `WAF_BLOCK_MODE=true`   | Returns 403 on match           |
-| Monitor only  | `WAF_BLOCK_MODE=false`    | Logs but passes all requests   |
+| Environment variable | Default | Result |
+| --- | --- | --- |
+| `WAF_BLOCK_MODE` | `true` | Matching requests are logged and receive `403`. Set it to `false` for monitor-only mode. |
+| `PORT` | `3000` | Port the server listens on. |
+| `CORS_ORIGIN` | `*` | Comma-separated allowed browser origins. |
 
----
+Example monitor-only run:
 
-## SIEM alerts
+```bash
+WAF_BLOCK_MODE=false npm run dev
+```
 
-The SIEM engine fires alerts (printed to console + broadcast via WebSocket) when:
+## Project layout
 
-1. Any **critical** severity request is detected.
-2. An IP sends **5+ blocked requests within 60 seconds** (scan/brute-force pattern).
+```text
+backend/src/
+├── app.js                    Express server, API routes, static UI, and WebSocket setup
+├── middleware/waf.js         Request inspection, logging, and optional blocking
+├── owasp/rules.js            Detection rules
+├── owasp/classifier.js       Rule metadata and severity ranking
+└── services/
+    ├── logStore.js           Bounded in-memory event storage
+    └── wsHub.js              WebSocket broadcast helper
+frontend/
+├── dashboard.html            Live event dashboard
+├── dashboard.js              Dashboard REST/WebSocket client
+└── simulator.html            Attack request simulator
+```
 
-Extend `siemEngine.js` to add email, Slack, or PagerDuty webhooks.
+## Current limitations
 
+- Logs are in memory only; there is no active database persistence.
+- Only the four rules listed above are implemented; this does not cover the OWASP Top 10 in full.
+- There is no SIEM correlation engine, alert webhook, authentication, rate limiting, or rule-management UI.
+- Requests are inspected as a combined text string. A production WAF needs more robust parsing, normalization, context-aware rules, safe proxy/IP handling, audit storage, and extensive testing.
 
+## Deployment files
+
+The repository includes a `Dockerfile`, `docker-compose.yml`, ECS task definition, and AWS setup notes. They package and deploy this same Node.js WAF MVP; they do not add database persistence or additional WAF rules.
